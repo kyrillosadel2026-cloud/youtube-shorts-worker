@@ -1,0 +1,83 @@
+{
+  "name": "YouTube Long Video → AI Shorts → Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "0ea046f4-2e7e-4c93-bb0c-39e07b97f2c0",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -460,
+        0
+      ],
+      "webhookId": "5f1f4f98-60d9-48de-a00e-ytshorts001"
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $json.message || {};\nconst text = String(msg.text || '').trim();\nconst chatId = Number(msg.chat?.id);\nif (!Number.isFinite(chatId)) throw new Error('Telegram chat_id is missing');\nconst b64 = Buffer.from(text, 'utf8').toString('base64');\nreturn [{json: {chat_id: chatId, message_b64: b64}}];"
+      },
+      "id": "728a155a-68f2-4f95-b86d-4a9d34a4096d",
+      "name": "Prepare Safe Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=python3 /data/yt_shorts/run_pipeline.py --telegram-message-b64 '{{$json.message_b64}}' --chat-id {{$json.chat_id}}"
+      },
+      "id": "5da52f9d-3060-47fa-87c0-0b70590b6e13",
+      "name": "Run Shorts Pipeline",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        40,
+        0
+      ],
+      "alwaysOutputData": true
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Safe Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Safe Input": {
+      "main": [
+        [
+          {
+            "node": "Run Shorts Pipeline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "versionId": "10d43bb2-3ac7-4aed-842d-b123c871e302",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
