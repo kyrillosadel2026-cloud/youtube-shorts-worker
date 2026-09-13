@@ -1,22 +1,27 @@
-FROM n8nio/n8n:latest
+FROM python:3.12-slim
 
-USER root
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    YT_SHORTS_ROOT=/tmp/yt_shorts/jobs \
+    WORKER_LOG_DIR=/tmp/yt_shorts/logs \
+    KEEP_JOB_FILES=0
 
-# n8n 2.x images are Alpine-based. Restore apk when missing, then install media/python tools.
-COPY --from=alpine:3.22 /sbin/apk /sbin/apk
-COPY --from=alpine:3.22 /lib/apk /lib/apk
-COPY --from=alpine:3.22 /usr/lib/libapk* /usr/lib/
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    fonts-dejavu-core \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN apk add --no-cache \
-    python3 py3-pip ffmpeg font-dejavu ca-certificates curl bash
+WORKDIR /app
 
-COPY requirements.txt /tmp/requirements.txt
-RUN python3 -m pip install --break-system-packages --no-cache-dir -r /tmp/requirements.txt
+COPY requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-RUN mkdir -p /data/yt_shorts
-COPY video_analyzer.py /data/yt_shorts/video_analyzer.py
-COPY short_editor.py /data/yt_shorts/short_editor.py
-COPY run_pipeline.py /data/yt_shorts/run_pipeline.py
-RUN chmod +x /data/yt_shorts/*.py && chown -R node:node /data/yt_shorts
+COPY worker_api.py run_pipeline.py video_analyzer.py short_editor.py ./
 
-USER node
+RUN mkdir -p /tmp/yt_shorts/jobs /tmp/yt_shorts/logs
+
+EXPOSE 8080
+
+CMD ["sh", "-c", "uvicorn worker_api:app --host 0.0.0.0 --port ${PORT:-8080}"]
