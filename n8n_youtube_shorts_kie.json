@@ -1,0 +1,112 @@
+{
+  "name": "YouTube → AI Shorts → Telegram V2",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "56ceb158-1526-4cba-98aa-fdee33428c93",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -420,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $json.message || {};\nconst chatId = Number(msg.chat?.id);\nconst text = String(msg.text || '').trim();\nif (!Number.isFinite(chatId)) throw new Error('Telegram chat_id is missing');\nif (!text) throw new Error('Send: /shorts 1 https://youtu.be/VIDEO_ID');\nreturn [{json:{chat_id:chatId,message:text}}];"
+      },
+      "id": "8473c0c4-f035-46f8-b5f2-b83c228a4861",
+      "name": "Prepare Worker Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://youtube-shorts-worker-production.up.railway.app/process",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-worker-token",
+              "value": "ytw2_kglwDTvMKs9M2Py65_7FglY4d7w9DylDZhAd6XhcQxg"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { chat_id: $json.chat_id, message: $json.message } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "611eb322-5041-440c-af44-0f90f298b59e",
+      "name": "Send Job to Railway",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## V2 Setup\n1. Select your Telegram credential in Telegram Trigger.\n2. Do NOT edit the x-worker-token; it already matches worker_api.py V2.\n3. Activate the workflow.\n4. Send `/shorts 1 https://youtu.be/REAL_VIDEO_ID`.",
+        "height": 230,
+        "width": 400
+      },
+      "id": "1b271f71-28fc-47a0-970e-64fce2af912c",
+      "name": "V2 Setup Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -320
+      ]
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Worker Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Worker Request": {
+      "main": [
+        [
+          {
+            "node": "Send Job to Railway",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "versionId": "58394ddf-9125-45c3-81c3-e5373ceb06d2",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
